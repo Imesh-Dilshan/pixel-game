@@ -145,6 +145,30 @@ function drawTree(obj) {
       ctx.fillStyle = band.top;
       ctx.fillRect(cx - 4, cy - 5, 8, 3);
     }
+  drawShadow(p.x, p.y + 4, 16, 8);
+
+  ctx.fillStyle = palette.trunk;
+  ctx.strokeStyle = palette.outline;
+  ctx.fillRect(p.x - 4, p.y - 34, 8, 24);
+  ctx.strokeRect(p.x - 4, p.y - 34, 8, 24);
+
+  const layers = [
+    { c: palette.treeDark, r: 22, dy: -36 },
+    { c: palette.treeMid, r: 18, dy: -46 },
+    { c: palette.treeLight, r: 13, dy: -54 }
+  ];
+
+  for (const layer of layers) {
+    ctx.fillStyle = layer.c;
+    ctx.strokeStyle = palette.outline;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y + layer.dy - layer.r);
+    ctx.lineTo(p.x + layer.r, p.y + layer.dy);
+    ctx.lineTo(p.x, p.y + layer.dy + layer.r * 0.65);
+    ctx.lineTo(p.x - layer.r, p.y + layer.dy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
   }
 }
 
@@ -224,6 +248,7 @@ function drawPlayer(obj) {
   }
 
   drawShadow(p.x - 2, p.y + 2, 11 * (1 - dyingProgress * 0.5), 6 * (1 - dyingProgress * 0.2));
+  drawShadow(p.x, p.y + 8, 11, 6);
 
   ctx.strokeStyle = '#101412';
 
@@ -245,6 +270,13 @@ function drawPlayer(obj) {
     ctx.fillRect(p.x - 6, headTop, 12, headHeight);
     ctx.strokeRect(p.x - 6, headTop, 12, headHeight);
   }
+  ctx.fillRect(p.x - 6, p.y - 23, 12, 16);
+  ctx.strokeRect(p.x - 6, p.y - 23, 12, 16);
+
+  // Head
+  ctx.fillStyle = '#7f8478';
+  ctx.fillRect(p.x - 6, p.y - 31, 12, 10);
+  ctx.strokeRect(p.x - 6, p.y - 31, 12, 10);
 
   // Eyes
   const eyeOffset = obj.facing === 'right' ? 1 : obj.facing === 'left' ? -1 : 0;
@@ -253,6 +285,8 @@ function drawPlayer(obj) {
     ctx.fillRect(p.x - 4 + eyeOffset, p.y - 27 + sink, 2, 2);
     ctx.fillRect(p.x + 2 + eyeOffset, p.y - 27 + sink, 2, 2);
   }
+  ctx.fillRect(p.x - 4 + eyeOffset, p.y - 27, 2, 2);
+  ctx.fillRect(p.x + 2 + eyeOffset, p.y - 27, 2, 2);
 
   // Legs
   ctx.fillStyle = '#111315';
@@ -261,6 +295,8 @@ function drawPlayer(obj) {
     ctx.fillRect(p.x - 5, p.y - 7 + sink, 4, 6 + step);
     ctx.fillRect(p.x + 1, p.y - 7 + sink, 4, 6 + (1 - step));
   }
+  ctx.fillRect(p.x - 5, p.y - 7, 4, 6 + step);
+  ctx.fillRect(p.x + 1, p.y - 7, 4, 6 + (1 - step));
 }
 
 const objects = [
@@ -301,6 +337,7 @@ const player = {
   respawnTimer: 0,
   spawnX: 9,
   spawnY: 9
+  walkCycle: 0
 };
 
 const keys = new Set();
@@ -309,6 +346,7 @@ const STEP_MS = 120;
 
 function canWalkTo(x, y) {
   if (x < 0 || y < 0 || x >= WORLD_W || y >= WORLD_H) return false;
+  if (terrain[y][x].type === 'water') return false;
   if (blockedTiles.has(`${x},${y}`)) return false;
   return true;
 }
@@ -326,6 +364,7 @@ function triggerWaterDeath(x, y, facing, now) {
 }
 
 function movePlayer(dx, dy, facing, now) {
+function movePlayer(dx, dy, facing) {
   const nx = player.x + dx;
   const ny = player.y + dy;
   if (!canWalkTo(nx, ny)) return false;
@@ -359,6 +398,16 @@ function handleMovement(now) {
     movedAt = now;
   } else if (keys.has('ArrowRight')) {
     movePlayer(1, -1, 'right', now);
+    movePlayer(-1, -1, 'up');
+    movedAt = now;
+  } else if (keys.has('ArrowDown')) {
+    movePlayer(1, 1, 'down');
+    movedAt = now;
+  } else if (keys.has('ArrowLeft')) {
+    movePlayer(-1, 1, 'left');
+    movedAt = now;
+  } else if (keys.has('ArrowRight')) {
+    movePlayer(1, -1, 'right');
     movedAt = now;
   }
 }
