@@ -102,6 +102,49 @@ function drawShadow(sx, sy, radiusX, radiusY) {
 
 function drawTree(obj) {
   const p = isoToScreen(obj.x, obj.y, obj.elev);
+
+  // Shadow starts right from the trunk base (no gap).
+  ctx.fillStyle = 'rgba(20, 34, 23, 0.38)';
+  ctx.beginPath();
+  ctx.ellipse(p.x + 9, p.y - 1, 20, 8, -0.45, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Roots / trunk cluster
+  ctx.strokeStyle = palette.outline;
+  ctx.fillStyle = '#7f4d3b';
+  ctx.fillRect(p.x - 7, p.y - 14, 14, 12);
+  ctx.strokeRect(p.x - 7, p.y - 14, 14, 12);
+  ctx.fillRect(p.x - 11, p.y - 8, 5, 7);
+  ctx.fillRect(p.x + 6, p.y - 8, 5, 7);
+  ctx.strokeRect(p.x - 11, p.y - 8, 5, 7);
+  ctx.strokeRect(p.x + 6, p.y - 8, 5, 7);
+
+  const clusters = [
+    { y: -48, left: '#1f5f42', right: '#1a533a', top: '#2c7f56', width: 13 },
+    { y: -38, left: '#2a7d53', right: '#246f4a', top: '#3ea869', width: 12 },
+    { y: -28, left: '#46a863', right: '#3a9658', top: '#6ad67a', width: 11 }
+  ];
+
+  for (const band of clusters) {
+    for (let i = -2; i <= 2; i++) {
+      const cx = p.x + i * (band.width - 2);
+      const cy = p.y + band.y + Math.abs(i) * 2;
+
+      ctx.fillStyle = i > 0 ? band.right : band.left;
+      ctx.strokeStyle = palette.outline;
+      ctx.beginPath();
+      ctx.moveTo(cx - band.width, cy);
+      ctx.lineTo(cx, cy - 8);
+      ctx.lineTo(cx + band.width, cy);
+      ctx.lineTo(cx + band.width - 3, cy + 8);
+      ctx.lineTo(cx - band.width + 3, cy + 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = band.top;
+      ctx.fillRect(cx - 4, cy - 5, 8, 3);
+    }
   drawShadow(p.x, p.y + 4, 16, 8);
 
   ctx.fillStyle = palette.trunk;
@@ -185,12 +228,48 @@ function drawHouse(obj) {
 
 function drawPlayer(obj) {
   const p = isoToScreen(obj.x, obj.y, obj.elev);
+  const dyingProgress = obj.state === 'dying'
+    ? Math.min(1, (obj.deathTimer - obj.deathStartedAt) / obj.deathDuration)
+    : 0;
+
+  if (obj.state === 'dying') {
+    const ring = 10 + dyingProgress * 14;
+    ctx.strokeStyle = `rgba(223, 255, 255, ${0.9 - dyingProgress * 0.9})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + 1, ring, ring * 0.45, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+
+    ctx.fillStyle = '#d7fbff';
+    ctx.fillRect(p.x - 1, p.y - 6 - dyingProgress * 8, 2, 2);
+    ctx.fillRect(p.x + 6, p.y - 2 - dyingProgress * 5, 2, 2);
+    ctx.fillRect(p.x - 8, p.y - 1 - dyingProgress * 6, 2, 2);
+  }
+
+  drawShadow(p.x - 2, p.y + 2, 11 * (1 - dyingProgress * 0.5), 6 * (1 - dyingProgress * 0.2));
   drawShadow(p.x, p.y + 8, 11, 6);
 
   ctx.strokeStyle = '#101412';
 
   // Body: slightly larger than a tile-box sprite footprint
   ctx.fillStyle = '#1c1f22';
+  const sink = Math.floor(dyingProgress * 16);
+  const bodyTop = p.y - 23 + sink;
+  const bodyHeight = Math.max(2, 16 - Math.floor(dyingProgress * 11));
+  if (obj.state !== 'dead') {
+    ctx.fillRect(p.x - 6, bodyTop, 12, bodyHeight);
+    ctx.strokeRect(p.x - 6, bodyTop, 12, bodyHeight);
+  }
+
+  // Head
+  ctx.fillStyle = '#7f8478';
+  const headTop = p.y - 31 + sink;
+  const headHeight = Math.max(1, 10 - Math.floor(dyingProgress * 7));
+  if (obj.state !== 'dead') {
+    ctx.fillRect(p.x - 6, headTop, 12, headHeight);
+    ctx.strokeRect(p.x - 6, headTop, 12, headHeight);
+  }
   ctx.fillRect(p.x - 6, p.y - 23, 12, 16);
   ctx.strokeRect(p.x - 6, p.y - 23, 12, 16);
 
@@ -202,12 +281,20 @@ function drawPlayer(obj) {
   // Eyes
   const eyeOffset = obj.facing === 'right' ? 1 : obj.facing === 'left' ? -1 : 0;
   ctx.fillStyle = '#f5f5f5';
+  if (obj.state !== 'dead' && dyingProgress < 0.75) {
+    ctx.fillRect(p.x - 4 + eyeOffset, p.y - 27 + sink, 2, 2);
+    ctx.fillRect(p.x + 2 + eyeOffset, p.y - 27 + sink, 2, 2);
+  }
   ctx.fillRect(p.x - 4 + eyeOffset, p.y - 27, 2, 2);
   ctx.fillRect(p.x + 2 + eyeOffset, p.y - 27, 2, 2);
 
   // Legs
   ctx.fillStyle = '#111315';
   const step = obj.walkCycle > 0.5 ? 1 : 0;
+  if (obj.state !== 'dead' && dyingProgress < 0.6) {
+    ctx.fillRect(p.x - 5, p.y - 7 + sink, 4, 6 + step);
+    ctx.fillRect(p.x + 1, p.y - 7 + sink, 4, 6 + (1 - step));
+  }
   ctx.fillRect(p.x - 5, p.y - 7, 4, 6 + step);
   ctx.fillRect(p.x + 1, p.y - 7, 4, 6 + (1 - step));
 }
@@ -242,6 +329,14 @@ const player = {
   elev: terrain[9][9].elev,
   h: 2.2,
   facing: 'down',
+  walkCycle: 0,
+  state: 'alive',
+  deathTimer: 0,
+  deathStartedAt: 0,
+  deathDuration: 900,
+  respawnTimer: 0,
+  spawnX: 9,
+  spawnY: 9
   walkCycle: 0
 };
 
@@ -256,10 +351,28 @@ function canWalkTo(x, y) {
   return true;
 }
 
+function triggerWaterDeath(x, y, facing, now) {
+  player.x = x;
+  player.y = y;
+  player.elev = terrain[y][x].elev;
+  player.facing = facing;
+  player.state = 'dying';
+  player.deathStartedAt = now;
+  player.deathTimer = now;
+  player.respawnTimer = now + player.deathDuration + 550;
+  keys.clear();
+}
+
+function movePlayer(dx, dy, facing, now) {
 function movePlayer(dx, dy, facing) {
   const nx = player.x + dx;
   const ny = player.y + dy;
   if (!canWalkTo(nx, ny)) return false;
+
+  if (terrain[ny][nx].type === 'water') {
+    triggerWaterDeath(nx, ny, facing, now);
+    return true;
+  }
 
   player.x = nx;
   player.y = ny;
@@ -270,10 +383,21 @@ function movePlayer(dx, dy, facing) {
 }
 
 function handleMovement(now) {
+  if (player.state !== 'alive') return;
   if (now - movedAt < STEP_MS) return;
 
   // Isometric controls mapped to visible screen directions.
   if (keys.has('ArrowUp')) {
+    movePlayer(-1, -1, 'up', now);
+    movedAt = now;
+  } else if (keys.has('ArrowDown')) {
+    movePlayer(1, 1, 'down', now);
+    movedAt = now;
+  } else if (keys.has('ArrowLeft')) {
+    movePlayer(-1, 1, 'left', now);
+    movedAt = now;
+  } else if (keys.has('ArrowRight')) {
+    movePlayer(1, -1, 'right', now);
     movePlayer(-1, -1, 'up');
     movedAt = now;
   } else if (keys.has('ArrowDown')) {
@@ -285,6 +409,21 @@ function handleMovement(now) {
   } else if (keys.has('ArrowRight')) {
     movePlayer(1, -1, 'right');
     movedAt = now;
+  }
+}
+
+function updatePlayerState(now) {
+  if (player.state === 'dying') {
+    player.deathTimer = now;
+    if (now >= player.respawnTimer) {
+      player.state = 'alive';
+      player.x = player.spawnX;
+      player.y = player.spawnY;
+      player.elev = terrain[player.spawnY][player.spawnX].elev;
+      player.walkCycle = 0;
+    } else if (now >= player.deathStartedAt + player.deathDuration) {
+      player.state = 'dead';
+    }
   }
 }
 
@@ -340,6 +479,7 @@ function drawWorld() {
 }
 
 function loop(now) {
+  updatePlayerState(now);
   handleMovement(now);
   drawWorld();
   window.requestAnimationFrame(loop);

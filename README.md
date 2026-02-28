@@ -18,3 +18,4 @@ Open `index.html` in a browser.
 - Consistent pixel scale, palette, outlines, and crisp rendering
 - Tall objects (trees/building/signs) rendered with depth-aware draw order
 - A playable character sprite with isometric movement and collision against water/obstacles
+- Jumping into water now triggers a splash/sink death animation and automatic respawn
